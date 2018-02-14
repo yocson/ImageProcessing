@@ -44,13 +44,13 @@ def get_detector(img):
     dir_img = np.array([])
     for x in np.nditer(Eo):
         if ((x >= 0 and x < 22.5) or (x > 157.5 and x <= 180)): 
-            dir = 0
+            direction = 0
         elif (x >= 22.5 and x < 67.5):
-            dir = 45
+            direction = 45
         elif (x >= 67.6 and x < 112.5):
-            dir = 90
+            direction = 90
         else:
-            dir = 135
+            direction = 135
         dir_img = np.append(dir_img, dir)
     return dir_img.astype(int).reshape(Eo.shape[0], Eo.shape[1])
 
@@ -62,10 +62,23 @@ def nonmax_suppression(Es, Eo):
     while not it.finished:
         i = it.multi_index[0]
         j = it.multi_index[1]
-        im, jm = 
-        ip, jp = 
-        if (it[0] >= Es[im, jm] && it[0] >= Es[ip, jp]) suppressed_img[i, j] = it[0]
+        direction = dir_img[i, j]
+        if (direction == 0):
+            im, jm = i-1, j
+            ip, jp = i+1, j
+        elif (direction == 45):
+            im, jm = i-1, j+1
+            ip, jp = i+1, j-1
+        elif (direction == 90):
+            im, jm = i, j-1
+            ip, jp = i, j+1
+        else:
+            im, jm = i-1, j-1
+            ip, jp = i+1, i+1
+        if (it[0] >= Es[im, jm] and it[0] >= Es[ip, jp]):
+            suppressed_img[i, j] = it[0]
         it.iternext()
+    
     return suppressed_img
         
     
