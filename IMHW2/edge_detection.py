@@ -1,7 +1,8 @@
 from skimage import io
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy import ndimage
+from scipy import ndimage, signal
+from math import sqrt, pi
 
 def gaussian(x, mu, sig):
     return 1./(sqrt(2.*pi)*sig)*np.exp(-np.power((x - mu)/sig, 2.)/2)
@@ -32,14 +33,16 @@ def gradient_image(img, direction='x'):
     Returns:
         image with gradient value along direction
     """
-    ker = np.array([-1, 0, 1])
+    ker = np.array([-1, 0, 1]).reshape(1, 3)
     if (direction == 'y'):
         ker = np.transpose(ker)
 
-    res = ndimage.convolve(img, ker)
-
+    res = signal.convolve2d(img, ker, boundary='fill', mode='same')
+    np.set_printoptions(threshold=np.nan)
+    # print(res)
+    # io.imshow(res, cmap='gray')
+    # plt.show()
     return res
-
 
 def canny_enhancer(img, sigma):
     """Operate CNNNY_ENHACER algorithm
@@ -55,11 +58,11 @@ def canny_enhancer(img, sigma):
     img_after_gau = gaussian_filter(img, sigma)
     img_of_grad_x = gradient_image(img_after_gau)
     img_of_grad_y = gradient_image(img_after_gau, 'y')
-    Es = np.sqrt(np.square(img_of_grad_x) + np.square(img_of_grad_y), dtype=int)
-    Eo = np.arctan(img_of_grad_x / img_of_grad_y)
+    Es = np.sqrt(np.square(img_of_grad_x) + np.square(img_of_grad_y))
+    Eo = np.arctan(img_of_grad_y / img_of_grad_x)
     return Es, Eo
 
-def get_detector(Eo):
+def get_direction(Eo):
     """from orientation image to 0, 45, 90, 135
 
     Args:
@@ -70,6 +73,10 @@ def get_detector(Eo):
     """
     dir_img = np.array([])
     for x in np.nditer(Eo):
+        x = x / pi * 180
+        if (x < 0):
+            x = x + 180
+        direction = 0
         if ((x >= 0 and x < 22.5) or (x > 157.5 and x <= 180)): 
             direction = 0
         elif (x >= 22.5 and x < 67.5):
@@ -78,8 +85,15 @@ def get_detector(Eo):
             direction = 90
         else:
             direction = 135
-        dir_img = np.append(dir_img, dir)
+        dir_img = np.append(dir_img, direction)
+
     return dir_img.astype(int).reshape(Eo.shape[0], Eo.shape[1])
+
+def checkBoundary(im, jm, ip, jp, Es):
+    if (im < 0 or ip > Es.shape[0] or jm < 0 or jp > Es.shape[1]):
+        return False
+    else:
+        return True
 
 def nonmax_suppression(Es, Eo):
     """Operate algorithm of nonmax_suppression
@@ -93,7 +107,7 @@ def nonmax_suppression(Es, Eo):
     Returns:
         suppressed image
     """
-    dir_img = get_detector(Eo)
+    dir_img = get_direction(Eo)
 
     suppressed_img = np.zeros_like(Es)
     it = np.nditer(Es, flags=['multi_index'])
@@ -101,7 +115,7 @@ def nonmax_suppression(Es, Eo):
         i = it.multi_index[0]
         j = it.multi_index[1]
         im, jm, ip, jp = get_neighbor_of_index(i, j, dir_img)
-        if (it[0] >= Es[im, jm] and it[0] >= Es[ip, jp]):
+        if (checkBoundary(im, jm, ip, jp, Es) and it[0] >= Es[im, jm] and it[0] >= Es[ip, jp]):
             suppressed_img[i, j] = it[0]
         it.iternext()
     return suppressed_img
@@ -180,14 +194,17 @@ def hystersis_threshold(In, dir_img, ti, th):
             if (visited_img[i, j] == 1):
                 continue
             visited_img[i, j] == 1
-            track_edge(i, j, dir_img, visited_img, ti)
+            track_edge(i, j, In, dir_img, visited_img, ti)
         it.iternext()
     return visited_img
 
 if __name__ == '__main__':
-    image = io.imread('Syracuse_01.jpg')
-    img_after_gau = gaussian_filter(image, 0.9)
-    io.imshow(img_after_gau)
+    image = io.imread('Flowers.jpg')
+    Es, Eo = canny_enhancer(image, 0.9)
+    
+    print(Es)
+    print(Eo)
+
     plt.show()
     
 
