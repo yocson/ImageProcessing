@@ -182,9 +182,14 @@ def hystersis_threshold(In, dir_img, ti, th):
             visited_img[i, j] == 1
             track_edge(i, j, dir_img, visited_img, ti)
         it.iternext()
+    return visited_img
 
 if __name__ == '__main__':
-
+    image = io.imread('Syracuse_01.jpg')
+    img_after_gau = gaussian_filter(image, 0.9)
+    io.imshow(img_after_gau)
+    plt.show()
+    
 
     
 
