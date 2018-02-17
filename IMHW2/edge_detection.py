@@ -2,7 +2,8 @@ from skimage import io
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy import ndimage, signal
-from math import sqrt, pi, isnan
+from math import sqrt, pi, isnan, atan
+
 
 def gaussian(x, mu, sig):
     return 1./(sqrt(2.*pi)*sig)*np.exp(-np.power((x - mu)/sig, 2.)/2)
@@ -39,9 +40,6 @@ def gradient_image(img, direction='x'):
 
     res = signal.convolve2d(img, ker, boundary='fill', mode='same')
     np.set_printoptions(threshold=np.nan)
-    # print(res)
-    # io.imshow(res, cmap='gray')
-    # plt.show()
     return res
 
 def canny_enhancer(img, sigma):
@@ -125,7 +123,7 @@ def nonmax_suppression(Es, Eo, dir_img):
 
     return suppressed_img
         
-def get_neighbor_of_index(i, j, dir_img, direct=0):
+def get_neighbor_of_index(i, j, dir_img, direct = 0):
     """get neighbors' indices
 
     Find neighbors of i, j along the edge direction
@@ -143,16 +141,12 @@ def get_neighbor_of_index(i, j, dir_img, direct=0):
             im, jm = i, j-1
             ip, jp = i, j+1
         elif (direction == 45):
-            # im, jm = i-1, j+1
-            # ip, jp = i+1, j-1
             im, jm = i-1, j-1
-            ip, jp = i+1, i+1
+            ip, jp = i+1, j+1
         elif (direction == 90):
             im, jm = i-1, j
             ip, jp = i+1, j
         else:
-            # im, jm = i-1, j-1
-            # ip, jp = i+1, i+1
             im, jm = i-1, j+1
             ip, jp = i+1, j-1
     else:
@@ -162,16 +156,12 @@ def get_neighbor_of_index(i, j, dir_img, direct=0):
         elif (direction == 45):
             im, jm = i-1, j+1
             ip, jp = i+1, j-1
-            # im, jm = i-1, j-1
-            # ip, jp = i+1, i+1
         elif (direction == 90):
             im, jm = i, j-1
             ip, jp = i, j+1
         else:
-            # im, jm = i-1, j+1
-            # ip, jp = i+1, j-1
             im, jm = i-1, j-1
-            ip, jp = i+1, i+1
+            ip, jp = i+1, j+1
 
     return im, jm, ip, jp
 
@@ -225,17 +215,50 @@ def hystersis_threshold(In, dir_img, ti, th):
         it.iternext()
     return edge_img
 
-if __name__ == '__main__':
-    image = io.imread('Flowers.jpg')
-    Es, Eo = canny_enhancer(image, 1)
-    print("ENHACER")
+def canny_edge_detection(img, sigma, thresL, thresH):
+    """Operate canny edge detection
+
+    1) CANNY_ENHANCER
+    2) NONMAX_SUPPRESSION
+    3) HYSTERESIS_THRESH
+
+    Args:
+        img: input image
+        sigma: standard deviation for gaussian filter
+        thresL, thresH: two thresholds
+
+    Returns:
+        images with edge chains
+    """
+    image = io.imread(img)
+    Es, Eo = canny_enhancer(image, sigma)
     dir_img = get_direction(Eo)
     In = nonmax_suppression(Es, Eo, dir_img)
-    print("NONMAX")
-    edge_img = hystersis_threshold(In, dir_img, 20 ,60)
-    io.imshow(edge_img, cmap="gray")
+    edge_img = hystersis_threshold(In, dir_img, thresL ,thresH)
+
+    io.imshow(Eo, cmap='gray')
+    # plt.figure('CANNY EDGE DETECTION')
+    # plt.subplot(1,3,1)
+    # plt.title('CANNY_ENHANCER')
+    # io.imshow(Es, cmap='gray')
+    # io.imsave('CANNY_ENHANCER.jpg', Es.astype(np.uint8))
+    # plt.axis('off')
+    # plt.subplot(1,3,2)
+    # plt.title('NONMAX_SUPPRESSION')
+    # io.imshow(In, cmap='gray')
+    # io.imsave('NONMAX_SUPPRESSION.jpg', In.astype(np.uint8))
+    # plt.axis('off')
+    # plt.subplot(1,3,3)
+    # plt.title('HYSTERESIS_THRESH')
+    # io.imshow(edge_img, cmap='gray')
+    # io.imsave('HYSTERESIS_THRESH.jpg', edge_img.astype(np.uint8))
+    # plt.axis('off')
     plt.show()
-    
+
+    return edge_img
+
+if __name__ == '__main__':
+    canny_edge_detection('Flowers.jpg', 1, 20, 80)
 
 
     
