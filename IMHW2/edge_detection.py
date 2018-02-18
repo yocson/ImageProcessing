@@ -69,29 +69,34 @@ def get_direction(Eo):
     Returns:
         direction image
     """
-    dir_img = np.array([])
-    for x in np.nditer(Eo):
-        if (isnan(x)):
+    dir_img = np.zeros_like(Eo)
+    it = np.nditer(Eo, flags=['multi_index'])
+    while not it.finished:
+        i = it.multi_index[0]
+        j = it.multi_index[1]
+        if (isnan(it[0])):
             direction = 90
-            dir_img = np.append(dir_img, direction)
+            dir_img[i, j] = direction
+            it.iternext()
             continue
-        x = x / pi * 180
-        if (x < 0):
-            x = x + 180
-        if ((x >= 0 and x < 22.5) or (x > 157.5 and x <= 180)): 
+        value = it[0] / pi * 180
+        if (value < 0):
+            value = value + 180
+        if ((value >= 0 and value < 22.5) or (value > 157.5 and value <= 180)): 
             direction = 0
-        elif (x >= 22.5 and x < 67.5):
+        elif (value >= 22.5 and value < 67.5):
             direction = 45
-        elif (x >= 67.6 and x < 112.5):
+        elif (value >= 67.6 and value < 112.5):
             direction = 90
         else:
             direction = 135
-        dir_img = np.append(dir_img, direction)
+        dir_img[i, j] = direction
+        it.iternext()
 
     return dir_img.astype(int).reshape(Eo.shape[0], Eo.shape[1])
 
 def checkBoundary(im, jm, ip, jp, Es):
-    if (im < 0 or ip >= Es.shape[0] or jm < 0 or jp >= Es.shape[1]):
+    if (im < 0 or ip >= Es.shape[0] or jm < 0 or jm >= Es.shape[1] or jp < 0 or jp >= Es.shape[1]):
         return False
     else:
         return True
@@ -179,10 +184,10 @@ def track_edge(i, j, In, dir_img, visited_img, edge_img, ti):
     """
     im, jm, ip, jp = get_neighbor_of_index(i, j, dir_img, 1)
     visited_img[i, j] = 1
-    if (im >= 0 and jm < In.shape[1] and In[im, jm] > ti and not visited_img[im, jm]):
+    if (im >= 0 and jm < In.shape[1] and jm >= 0 and In[im, jm] > ti and not visited_img[im, jm]):
         edge_img[im, jm] = In[im, jm]
         visited_img, edge_img = track_edge(im, jm, In, dir_img, visited_img, edge_img, ti)
-    if (ip < In.shape[0] and jp >= 0  and In[ip, jp] > ti and not visited_img[ip, jp]):  
+    if (ip < In.shape[0] and jp >= 0 and jp < In.shape[1] and In[ip, jp] > ti and not visited_img[ip, jp]):  
         edge_img[ip, jp] = In[ip, jp]
         visited_img, edge_img = track_edge(ip, jp, In, dir_img, visited_img, edge_img, ti)
     return visited_img, edge_img
@@ -236,7 +241,6 @@ def canny_edge_detection(img, sigma, thresL, thresH):
     In = nonmax_suppression(Es, Eo, dir_img)
     edge_img = hystersis_threshold(In, dir_img, thresL ,thresH)
 
-    io.imshow(Eo, cmap='gray')
     # plt.figure('CANNY EDGE DETECTION')
     # plt.subplot(1,3,1)
     # plt.title('CANNY_ENHANCER')
@@ -253,12 +257,19 @@ def canny_edge_detection(img, sigma, thresL, thresH):
     # io.imshow(edge_img, cmap='gray')
     # io.imsave('HYSTERESIS_THRESH.jpg', edge_img.astype(np.uint8))
     # plt.axis('off')
-    plt.show()
+    # plt.show()
 
-    return edge_img
+    return Es, In, edge_img
 
 if __name__ == '__main__':
-    canny_edge_detection('Flowers.jpg', 1, 20, 80)
-
-
+    Es1, In1, edge_img1 = canny_edge_detection('Syracuse_01.jpg', 1, 10, 60)
+    io.imsave('CANNY_ENHANCER_6.jpg', Es1.astype(np.uint8))
+    io.imsave('NONMAX_SUPPRESSION_6.jpg', In1.astype(np.uint8))
+    io.imsave('HYSTERESIS_THRESH_6.jpg', edge_img1.astype(np.uint8))
+    # Es2, In2, edge_img2 = canny_edge_detection('Syracuse_01.jpg', 1, 10, 80)
+    # io.imsave('CANNY_ENHANCER_2.jpg', Es2.astype(np.uint8))
+    # io.imsave('NONMAX_SUPPRESSION_2.jpg', In2.astype(np.uint8))
+    # io.imsave('HYSTERESIS_THRESH_7.jpg', edge_img2.astype(np.uint8))
+    # Es3, In3, edge_img3 = canny_edge_detection('Syracuse_01.jpg', 1, 30, 60)
+    # io.imsave('HYSTERESIS_THRESH_8.jpg', edge_img3.astype(np.uint8))
     
