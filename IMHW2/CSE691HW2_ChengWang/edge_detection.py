@@ -1,3 +1,9 @@
+#!/usr/bin/env python
+
+# Cheng Wang(cwang76@syr.edu)
+# CSE691 Spring 2018
+# Code for HW2: Edge detection
+
 from skimage import io
 import numpy as np
 import matplotlib.pyplot as plt
@@ -185,10 +191,10 @@ def track_edge(i, j, In, dir_img, visited_img, edge_img, ti):
     im, jm, ip, jp = get_neighbor_of_index(i, j, dir_img, 1)
     visited_img[i, j] = 1
     if (im >= 0 and jm < In.shape[1] and jm >= 0 and In[im, jm] > ti and not visited_img[im, jm]):
-        edge_img[im, jm] = In[im, jm]
+        edge_img[im, jm] = 255
         visited_img, edge_img = track_edge(im, jm, In, dir_img, visited_img, edge_img, ti)
     if (ip < In.shape[0] and jp >= 0 and jp < In.shape[1] and In[ip, jp] > ti and not visited_img[ip, jp]):  
-        edge_img[ip, jp] = In[ip, jp]
+        edge_img[ip, jp] = 255
         visited_img, edge_img = track_edge(ip, jp, In, dir_img, visited_img, edge_img, ti)
     return visited_img, edge_img
     
@@ -215,7 +221,7 @@ def hystersis_threshold(In, dir_img, ti, th):
             i = it.multi_index[0]
             j = it.multi_index[1]
             if (visited_img[i, j] == 0): 
-                edge_img[i, j] = it[0]
+                edge_img[i, j] = 255
                 visited_img, edge_img = track_edge(i, j, In, dir_img, visited_img, edge_img, ti)
         it.iternext()
     return edge_img
@@ -262,14 +268,14 @@ def canny_edge_detection(img, sigma, thresL, thresH):
     return Es, In, edge_img
 
 if __name__ == '__main__':
-    Es1, In1, edge_img1 = canny_edge_detection('Syracuse_01.jpg', 1, 10, 60)
-    io.imsave('CANNY_ENHANCER_6.jpg', Es1.astype(np.uint8))
-    io.imsave('NONMAX_SUPPRESSION_6.jpg', In1.astype(np.uint8))
-    io.imsave('HYSTERESIS_THRESH_6.jpg', edge_img1.astype(np.uint8))
-    # Es2, In2, edge_img2 = canny_edge_detection('Syracuse_01.jpg', 1, 10, 80)
-    # io.imsave('CANNY_ENHANCER_2.jpg', Es2.astype(np.uint8))
-    # io.imsave('NONMAX_SUPPRESSION_2.jpg', In2.astype(np.uint8))
-    # io.imsave('HYSTERESIS_THRESH_7.jpg', edge_img2.astype(np.uint8))
-    # Es3, In3, edge_img3 = canny_edge_detection('Syracuse_01.jpg', 1, 30, 60)
-    # io.imsave('HYSTERESIS_THRESH_8.jpg', edge_img3.astype(np.uint8))
+    Es1, In1, edge_img1 = canny_edge_detection('Flowers.jpg', 3, 10, 60)
+    # io.imsave('CANNY_ENHANCER_12.jpg', Es1.astype(np.uint8))
+    # io.imsave('NONMAX_SUPPRESSION_12.jpg', In1.astype(np.uint8))
+    io.imsave('HYSTERESIS_THRESH_16.jpg', edge_img1.astype(np.uint8))
+    # Es2, In2, edge_img2 = canny_edge_detection('Syracuse_01.jpg', 1, 10, 80) 
+    # # io.imsave('CANNY_ENHANCER_2.jpg', Es2.astype(np.uint8))
+    # # io.imsave('NONMAX_SUPPRESSION_2.jpg', In2.astype(np.uint8))
+    # io.imsave('HYSTERESIS_THRESH_13.jpg', edge_img2.astype(np.uint8))
+    # Es3, In3, edge_img3 = canny_edge_detection('Syracuse_01.jpg', 1, 10, 30)
+    # io.imsave('HYSTERESIS_THRESH_14.jpg', edge_img3.astype(np.uint8))
     
