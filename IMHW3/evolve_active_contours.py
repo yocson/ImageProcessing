@@ -2,7 +2,7 @@ from skimage import io
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy import ndimage, signal
-from math import sqrt, pi, isnan, atan
+from math import sqrt, pi, hypot
 import gaussian as gs
 
 def gradient_image(img, direction='x'):
@@ -47,7 +47,7 @@ def onclick(event):
     print(ix, iy)
     plt.scatter([ix], [iy])
     plt.draw()
-    # global coords
+    global coords
     coords.append((ix, iy))
 
 def get_points(image):
@@ -63,15 +63,37 @@ def show_contours(image):
         plt.scatter([t[0]], [t[1]])
     plt.show() 
 
+def interpolate():
+    coords_temp = []
+    global coords
+    for index, item in enumerate(coords):
+        next_item = coords[0] if (index == len(coords) - 1) else coords[index + 1]
+        interval = hypot(next_item[0] - item[0], next_item[1] - item[1]) 
+        coords_temp.append(item) 
+        if (interval > 5):
+            sub = int(interval / 5)
+            disx = (next_item[0] - item[0]) / (sub + 1)
+            disy = (next_item[1] - item[1]) / (sub + 1)
+            for i in range(0, sub):
+                ex, ey = item[0] + disx * (i + 1), item[1] + disy * (i + 1)
+                coords_temp.append((int(ex), int(ey)))
+    coords = coords_temp
+
 def evolve_active_contours(img):
     image = io.imread(img)
     get_points(image)
     print('after')
     show_contours(image)
+    interpolate()
+    show_contours(image)
 
 if __name__ == '__main__':
     image = io.imread('image1.jpg')
     get_points(image)
+    print(coords)
     print('after')
     show_contours(image)
+    interpolate()
+    show_contours(image)
+    print(coords)
 
