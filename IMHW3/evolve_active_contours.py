@@ -90,6 +90,38 @@ def e_cont(index):
     global d
     return d - distance(coords[index], coords[index-1])
 
+def e_curv(index):
+   pre = coords[index-1]
+   nex = coords[index+1]
+   cur = coords[index]
+   ter = tuple(pre[0] + nex[0] - 2 * cur[0], pre[1] + nex[1] - 2 * cur[1])
+   return norm_square(ter, (0, 0))
+
+def get_neighbor(index, size_of_neigh):
+    center = coords[index]
+    ran = sqrt(size_of_neigh)
+    nei = []
+    for di in range(-ran, ran+1):
+        for dj in range(-ran, ran+1):
+            nei.append(tuple(center[0] + di, center[1] + dj))
+    return nei
+
+
+def grad_neigh(index, size_of_neigh, mag, mode):
+    nei = get_neighbor(index, size_of_neigh)
+    nei_mag = list(mag[x[0], x[1]] for x in nei)
+    if (mode == 'max'):
+        return max(nei_mag)
+    else:
+        return min(nei_mag)
+
+def e_image(index, size_of_neigh, mag):
+    max_neigh = grad_neigh(index, size_of_neigh, mag, 'max')
+    min_neigh = grad_neigh(index, size_of_neigh, mag, 'min')
+    if (max_neigh - min_neigh < 5):
+        min_neigh = max_neigh - 5
+    return (min_neigh - mag[index[0],index[1]]) / (max_neigh - min_neigh)
+
 def average_dis():
     global coords
     global d
@@ -115,7 +147,7 @@ def greedy_evolve(th1, th2, th3, size_of_neigh, mag):
         for i in range(0, n):
             e_min = inf
             for j in range(0, size_of_neigh):
-                e_j = alpha[i] * e_cont(i) + beta[i] * e_curv(i) + gamma[i] * e_image(i, size_of_neigh)
+                e_j = alpha[i] * e_cont(i) + beta[i] * e_curv(i) + gamma[i] * e_image(i, size_of_neigh, mag)
                 if (e_j < e_min):
                     j_min = j
             if (j_min != 5):
@@ -126,8 +158,6 @@ def greedy_evolve(th1, th2, th3, size_of_neigh, mag):
             u_i_len = hypot(u_i[0], u_i[1])
             u_i_1_len = hypot(u_i_1[0], u_i_1[1])
             curvature[i] = norm_square(tuple(t/u_i_len for t in u_i), tuple(t/u_i_1_len for t in u_i_1))
-            # curvature[i] = tuple(np.subtract(tuple(t/u_i_len for t in u_i), tuple(t/u_i_1_len for t in u_i_1)))
-            # curvature[i] = hypot(curvature[i][0], curvature[i][1]) ** 2
         for i in range(0, n):
             if (curvature[i] > curvature[i-1] and curvature[i] > curvature[i+1] and curvature[i] > th1 and mag[coords[i][0], coords[i][1]] > th2):
                 beta[i] = 0
