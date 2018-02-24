@@ -2,7 +2,7 @@ from skimage import io
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy import ndimage, signal
-from math import sqrt, pi, hypot
+from math import sqrt, pi, hypot, inf
 import gaussian as gs
 
 def gradient_image(img, direction='x'):
@@ -40,6 +40,7 @@ def get_strength_img(img, sigma):
     return Es
 
 coords = []
+d = 0
 
 def onclick(event):
     global ix, iy
@@ -78,6 +79,61 @@ def interpolate():
                 ex, ey = item[0] + disx * (i + 1), item[1] + disy * (i + 1)
                 coords_temp.append((int(ex), int(ey)))
     coords = coords_temp
+
+def norm_square(pt1, pt2):
+    return hypot(pt1[0]-pt2[0], pt1[1]-pt2[1]) ** 2
+
+def distance(pt1, pt2):
+    return hypot(pt1[0]-pt2[0], pt1[1]-pt2[1])
+
+def e_cont(index):
+    global d
+    return d - distance(coords[index], coords[index-1])
+
+def average_dis():
+    global coords
+    global d
+    length = len(coords)
+    s = 0
+    for index, value in enumerate(coords):
+        if (index != length-1):
+            next_item = coords[index + 1]
+        else:
+            next_item = coords[0]
+        s += distance(next_item, value)
+    d = s / (length - 1)
+
+def greedy_evolve(th1, th2, th3, size_of_neigh, mag):
+    global coords
+    global d
+    n = len(coords)
+    alpha = beta = gamma =[1] * n
+    curvature = [0] * n
+    while True:
+        average_dis()
+        ptsmoved = 0
+        for i in range(0, n):
+            e_min = inf
+            for j in range(0, size_of_neigh):
+                e_j = alpha[i] * e_cont(i) + beta[i] * e_curv(i) + gamma[i] * e_image(i, size_of_neigh)
+                if (e_j < e_min):
+                    j_min = j
+            if (j_min != 5):
+                ptsmoved += 1
+        for i in range(0, n):
+            u_i = (coords[i][0] - coords[i-1][0], coords[i][1] - coords[i-1][1])
+            u_i_1 = (coords[i+1][0] - coords[i][0], coords[i+1][1] - coords[i][1])
+            u_i_len = hypot(u_i[0], u_i[1])
+            u_i_1_len = hypot(u_i_1[0], u_i_1[1])
+            curvature[i] = norm_square(tuple(t/u_i_len for t in u_i), tuple(t/u_i_1_len for t in u_i_1))
+            # curvature[i] = tuple(np.subtract(tuple(t/u_i_len for t in u_i), tuple(t/u_i_1_len for t in u_i_1)))
+            # curvature[i] = hypot(curvature[i][0], curvature[i][1]) ** 2
+        for i in range(0, n):
+            if (curvature[i] > curvature[i-1] and curvature[i] > curvature[i+1] and curvature[i] > th1 and mag[coords[i][0], coords[i][1]] > th2):
+                beta[i] = 0
+        if (ptsmoved < th3):
+            break
+    
 
 def evolve_active_contours(img):
     image = io.imread(img)
