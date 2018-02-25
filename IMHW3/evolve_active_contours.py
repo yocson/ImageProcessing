@@ -31,13 +31,13 @@ def get_strength_img(img, sigma):
         sigma: std for gaussian filter
 
     Returns:
-        Es: strength image
+        mag: strength image
     """
     img_after_gau = gs.gaussian_filter(img, sigma)
     img_of_grad_x = gradient_image(img_after_gau)
     img_of_grad_y = gradient_image(img_after_gau, 'y')
-    Es = np.sqrt(np.square(img_of_grad_x) + np.square(img_of_grad_y))
-    return Es
+    mag = np.sqrt(np.square(img_of_grad_x) + np.square(img_of_grad_y))
+    return mag
 
 coords = []
 d = 0
@@ -86,26 +86,35 @@ def norm_square(pt1, pt2):
 def distance(pt1, pt2):
     return hypot(pt1[0]-pt2[0], pt1[1]-pt2[1])
 
-def e_cont(index):
+def e_cont(index, size_of_neigh):
     global d
-    return d - distance(coords[index], coords[index-1])
+    nei = get_neighbor(index, size_of_neigh)
+    max_cont = max(list(d - distance(x, coords[index-1]) for x in nei))
+    return (d - distance(coords[index], coords[index-1])) / max_cont
 
-def e_curv(index):
+def e_curv(index, size_of_neigh):
    pre = coords[index-1]
    nex = coords[index+1]
    cur = coords[index]
+   nei = get_neighbor(index, size_of_neigh)
+   max_curv = - inf
+   for item in nei:
+       ter = tuple(pre[0] + nex[0] - 2 * item[0], pre[1] + nex[1] - 2 * item[1])
+       res = norm_square(ter, (0, 0))
+       if (res > max_curv):
+           max_curv = res
    ter = tuple(pre[0] + nex[0] - 2 * cur[0], pre[1] + nex[1] - 2 * cur[1])
-   return norm_square(ter, (0, 0))
+   return norm_square(ter, (0, 0)) / max_curv
 
 def get_neighbor(index, size_of_neigh):
     center = coords[index]
     ran = sqrt(size_of_neigh)
     nei = []
-    for di in range(-ran, ran+1):
-        for dj in range(-ran, ran+1):
+    delta = int(ran/2)
+    for di in range(-delta, delta + 1):
+        for dj in range(-delta, delta + 1):
             nei.append(tuple(center[0] + di, center[1] + dj))
     return nei
-
 
 def grad_neigh(index, size_of_neigh, mag, mode):
     nei = get_neighbor(index, size_of_neigh)
@@ -133,7 +142,7 @@ def average_dis():
         else:
             next_item = coords[0]
         s += distance(next_item, value)
-    d = s / (length - 1)
+    d = s / length
 
 def greedy_evolve(th1, th2, th3, size_of_neigh, mag):
     global coords
@@ -144,13 +153,17 @@ def greedy_evolve(th1, th2, th3, size_of_neigh, mag):
     while True:
         average_dis()
         ptsmoved = 0
-        for i in range(0, n):
+        for i in range(0, n) + 1:
             e_min = inf
             for j in range(0, size_of_neigh):
-                e_j = alpha[i] * e_cont(i) + beta[i] * e_curv(i) + gamma[i] * e_image(i, size_of_neigh, mag)
+                e_j = alpha[i] * e_cont(i, size_of_neigh) + beta[i] * e_curv(i, size_of_neigh) + gamma[i] * e_image(i, size_of_neigh, mag)
                 if (e_j < e_min):
+                    e_min = e_j
                     j_min = j
-            if (j_min != 5):
+            if (j_min != int(size_of_neigh / 2)):
+                # TODO: move to j_min
+                nei = get_neighbor(i, size_of_neigh)
+                coords[i] = nei[j_min]
                 ptsmoved += 1
         for i in range(0, n):
             u_i = (coords[i][0] - coords[i-1][0], coords[i][1] - coords[i-1][1])
@@ -175,11 +188,14 @@ def evolve_active_contours(img):
 
 if __name__ == '__main__':
     image = io.imread('image1.jpg')
-    get_points(image)
-    print(coords)
-    print('after')
-    show_contours(image)
-    interpolate()
-    show_contours(image)
-    print(coords)
+    # get_points(image)
+    # print(coords)
+    # print('after')
+    # show_contours(image)
+    # interpolate()
+    # show_contours(image)
+    # print(coords)
+    mag = get_strength_img(image, 1)
+    io.imshow(mag, cmap='gray')
+    plt.show()
 
