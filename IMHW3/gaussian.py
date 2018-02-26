@@ -1,8 +1,10 @@
-from skimage import io
-import numpy as np
+from math import atan, isnan, pi, sqrt
+
 import matplotlib.pyplot as plt
+import numpy as np
 from scipy import ndimage, signal
-from math import sqrt, pi, isnan, atan
+from skimage import io
+
 
 def gaussian(x, mu, sig):
     return 1./(sqrt(2.*pi)*sig)*np.exp(-np.power((x - mu)/sig, 2.)/2)
