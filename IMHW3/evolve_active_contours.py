@@ -42,6 +42,7 @@ def get_strength_img(img, sigma):
     return mag
 
 coords = []
+corners = []
 d = 0
 
 def onclick(event):
@@ -52,8 +53,8 @@ def onclick(event):
     """
     global ix, iy
     ix, iy = int(event.xdata), int(event.ydata)
-    print(ix, iy)
-    plt.scatter([ix], [iy])
+    # print(ix, iy)
+    plt.scatter([ix], [iy], s = 2, c='r')
     plt.draw()
     global coords
     coords.append((iy, ix))
@@ -77,9 +78,14 @@ def show_contours(image):
         image {[image array]} -- input image
     """
     global coords
+    global corners
     io.imshow(image)
-    for t in coords:
-        plt.scatter([t[1]], [t[0]])
+    for index, item in enumerate(coords):
+        if (corners[index]):
+            color = 'w'
+        else:
+            color = 'r'
+        plt.scatter([item[1]], [item[0]], s=2, c=color)
     plt.show() 
 
 def interpolate():
@@ -87,6 +93,7 @@ def interpolate():
     """
     coords_temp = []
     global coords
+    global corners
     for index, item in enumerate(coords):
         next_item = coords[0] if (index == len(coords) - 1) else coords[index + 1]
         interval = hypot(next_item[0] - item[0], next_item[1] - item[1]) 
@@ -99,6 +106,8 @@ def interpolate():
                 ex, ey = item[0] + disx * (i + 1), item[1] + disy * (i + 1)
                 coords_temp.append((int(ex), int(ey)))
     coords = coords_temp
+    corners = [False] * len(coords)
+    
 
 def norm_square(pt1, pt2):
     return hypot(pt1[0] - pt2[0], pt1[1] - pt2[1]) ** 2
@@ -124,6 +133,16 @@ def distance(pt1, pt2):
 #     return fabs((d - distance(pos, prev_item))) / max_cont
 
 def cal_cont(index, nei):
+    """calculate the continuity term
+    
+    Arguments:
+        index {int} -- current index of points
+        pos {tuple} -- point position in image
+        nei {list of tuple} -- neighbour points
+    
+    Returns:
+        [list] -- normalized continuity term list of one neighourhood
+    """
     global d
     global coords
     prev_item = coords[index-1] if index != 0 else coords[-1]
@@ -156,6 +175,15 @@ def cal_cont(index, nei):
 #     return norm_square(ter, (0, 0)) / max_curv
 
 def cal_curv(index, nei):
+    """calculate the curvature term
+    
+    Arguments:
+        index {int} -- index of current point
+        nei {list of tuple} -- [description]
+    
+    Returns:
+        list -- normalized curvature term list of one neighbourhood
+    """
     global coords
     n = len(coords)
     pre = coords[index-1] if (index != 0) else coords[-1]
@@ -213,6 +241,15 @@ def get_neighbor(index, size_of_neigh):
 #     return (min_neigh - mag[pos[0],pos[1]]) / (max_neigh - min_neigh)
 
 def cal_image(mag, nei):
+    """calculate image edge attraction term
+    
+    Arguments:
+        mag {array} -- gradient magnitude
+        nei {list} -- neighbour points
+
+    Returns:
+        edge attraction term list of one neighborhood
+    """
     nei_mag = list(mag[x[0], x[1]] for x in nei)
     max_neigh = max(nei_mag)
     min_neigh = min(nei_mag)
@@ -255,6 +292,7 @@ def cal_curvature(i):
 
 def greedy_evolve(th1, th2, th3, size_of_neigh, mag, image):
     global coords
+    global corners
     global d
     n = len(coords)
     alpha = beta = gamma =[1] * n
@@ -269,7 +307,6 @@ def greedy_evolve(th1, th2, th3, size_of_neigh, mag, image):
             nei_curv = cal_curv(i, nei)
             nei_imag = cal_image(mag, nei)
             for j in range(0, size_of_neigh):
-                # e_j = alpha[i] * e_cont(i, pos, nei) + beta[i] * e_curv(i, pos, nei) + gamma[i] * e_image(pos, mag, nei)
                 e_j = alpha[i] * nei_cont[j] / max(nei_cont) + beta[i] * nei_curv[j] / max(nei_curv) + gamma[i] * nei_imag[j]
                 if (e_j < e_min):
                     e_min = e_j
@@ -287,6 +324,8 @@ def greedy_evolve(th1, th2, th3, size_of_neigh, mag, image):
             next_item = curvature[i+1] if (i != n-1) else curvature[0]
             if (cur_item > prev_item and cur_item > next_item and cur_item > th1 and mag[coords[i][0], coords[i][1]] > th2):
                 beta[i] = 0
+                print("I am here")
+                corners[i] = True;
 
         # show_contours(image)
         if (ptsmoved < th3 * n):
@@ -299,12 +338,9 @@ def evolve_active_contours(img):
     image = io.imread(img)
     mag = get_strength_img(image, 1)
     get_points(image)
-    print(coords)
-    print('after')
-    show_contours(image)
     interpolate()
     show_contours(image)
-    greedy_evolve(10, 10, 0.2, 49, mag, image)
+    greedy_evolve(4.8, 50, 0.1, 49, mag, image)
 
 
 if __name__ == '__main__':
@@ -316,4 +352,4 @@ if __name__ == '__main__':
     # interpolate()
     # show_contours(image)
     # print(coords)
-    evolve_active_contours('image1.jpg')
+    evolve_active_contours('Images1through8/image3.jpg')
