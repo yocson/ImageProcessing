@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from numpy import linalg as LA
 from scipy import ndimage, signal
+from scipy.linalg import eigh as largest_eigh
 from scipy.spatial import distance
 from skimage import io
 from sklearn import preprocessing
@@ -14,6 +15,7 @@ from sklearn import preprocessing
 
 class Train:
     def __init__(self, mypath):
+        # readin all images
         self.dataset_ = [join(mypath, f) for f in listdir(mypath) if isfile(join(mypath, f))]
         self.dataset_.sort()
         self.data_matrix_, self.img_aver_ = self.read_data_set(self.dataset_)
@@ -25,12 +27,15 @@ class Train:
             img = io.imread(image)
             img_sum = np.add(img_sum, img)
             data_matrix.append(img.flatten())
-        img_aver = np.divide(img_sum, len(dataset)).astype('uint8')
+        # get mean average
+        img_aver = np.divide(img_sum, len(dataset))
 
         data_matrix = np.array(data_matrix, dtype='int32')
         img_aver_flatten = img_aver.flatten()
         for index, _ in enumerate(data_matrix):
+            # substract every image by the mean image
             data_matrix[index] = np.subtract(data_matrix[index], img_aver_flatten)
+        # transpose, then every column is a image
         data_matrix = np.transpose(data_matrix)
         np.savetxt('average.txt', img_aver, delimiter=',', fmt='%i')
         return data_matrix, img_aver
@@ -55,26 +60,44 @@ class Train:
 
     def method_third(self):
         t = time.time()
-        xtx_mat = np.dot(np.transpose(self.data_matrix_), self.data_matrix_)
+        print(self.data_matrix_.shape)
+        # AtA
+        xtx_mat = np.transpose(self.data_matrix_) @ self.data_matrix_
         eigenvalue, eigenvector = LA.eig(xtx_mat)
-        eigenvector = np.dot(self.data_matrix_, eigenvector)
+        print(eigenvector.shape)
+        eigenvector = self.data_matrix_ @ eigenvector
+        print(eigenvector.shape)
+        # every row is an eigen face
+        eigenvector = eigenvector.T
+
+        # print(eigenvector.shape)
+
+        # evals_large, evecs_large = largest_eigh(xtx_mat, eigvals=(self.data_matrix_.shape[1]-50,self.data_matrix_.shape[1]-1))
+        # self.eigenfaces_ = self.data_matrix_ @ evecs_large
+        # self.eigenfaces_ = preprocessing.normalize(self.eigenfaces_, axis=0, norm='l2')
+        # self.eigenfaces_ = self.eigenfaces_.T
+        
+
         dt = time.time() - t
         np.savetxt('eigenvalue.txt', eigenvalue, delimiter=',', fmt='%i')
         np.savetxt('eigenvector.txt', eigenvector, delimiter=',', fmt='%i')
         return eigenvalue, eigenvector
 
     def find_n_eigenvector(self, n, eigenvalue, eigenvector):
-        varray = np.array(eigenvalue,dtype='int32')
+        varray = np.array(eigenvalue, dtype='int32')
+        # get n largest indices
         ind = np.argpartition(varray, -n)[-n:]
-        self.eigenfaces_ = eigenvector[:,ind]
+        print(eigenvector.shape)
+        self.eigenfaces_ = eigenvector[ind, :]
+        print(self.eigenfaces_.shape)
+        # normalize the eigenfaces
+        self.eigenfaces_ = preprocessing.normalize(self.eigenfaces_, axis=1, norm='l2')
+        # eigenfaces becomes coloums
+        # self.eigenfaces_ = self.eigenfaces_.T
 
-        self.eigenfaces_ = preprocessing.normalize(self.eigenfaces_, norm='l1')
-
-        self.eigenfaces_ = np.transpose(self.eigenfaces_)
 
         print(self.eigenfaces_.shape)
         np.savetxt('eigenfaces.txt', self.eigenfaces_, delimiter=',')
-
     
     def calssify(self, n):
         self.face_class_ = []
@@ -85,14 +108,13 @@ class Train:
         
         for img in self.dataset_:
             im = io.imread(img)
-            weightvec = []
-            for vec in self.eigenfaces_:
-                weightvec.append(np.dot(np.transpose(vec), np.subtract(im, self.img_aver_).flatten()))
-            weightvec_img = np.add(weightvec_img, np.array(weightvec))
+            weightvec = self.eigenfaces_ @ np.transpose(np.subtract(im, self.img_aver_).flatten())
+
+            weightvec_img = weightvec_img + np.array(weightvec)
             count += 1
             if (count == 9):
                 count = 0
-                self.face_class_.append(np.divide(weightvec, 9))
+                self.face_class_.append(np.divide(weightvec_img, 9))
                 weightvec_img = np.zeros((1,n))
         # print(len(self.dataset_))
         # print(len(self.face_class_))
@@ -100,8 +122,15 @@ class Train:
     def show_eigenfaces(self):
         for face in self.eigenfaces_:
              face = np.reshape(face, (io.imread(self.dataset_[0]).shape[0], io.imread(self.dataset_[0]).shape[1]))
-             io.imshow(face)
+             io.imshow(face, cmap='gray')
              plt.show()
+        
+    def show_faces_class(self):
+        for vec in self.face_class_:
+            img = vec @ self.eigenfaces_
+            img = np.reshape(img, (self.img_aver_.shape[0], self.img_aver_.shape[1]))
+            plt.imshow(img)
+            plt.show()
 
 
 class TestImg:
@@ -112,45 +141,64 @@ class TestImg:
         self.face_class_ = face_class
         
     def projection(self):
-        self.weightvec_ = np.dot(self.eigenfaces_, np.subtract(self.img_, self.img_aver_).flatten())
-        print(self.eigenfaces_.shape)
-        print(self.weightvec_)
+        # eigenfaces * image
+        self.weightvec_ = self.eigenfaces_ @ np.transpose(np.subtract(self.img_, self.img_aver_).flatten())
         # self.weightvec_ = []
         # for vec in self.eigenfaces_:
         #     print(vec)
         #     self.weightvec_.append(np.dot(np.transpose(vec), np.subtract(self.img_, self.img_aver_).flatten()))
-        # self.weightvec_ = preprocessing.normalize(np.array(self.weightvec_).reshape(-1, 1), axis=0, norm='l2')
-        print(self.weightvec_.shape)
+        # min_max_scaler = preprocessing.MinMaxScaler(feature_range=(-1,1))
+        # self.weightvec_ = min_max_scaler.fit_transform(np.array(self.weightvec_).reshape(-1, 1))
+        # self.weightvec_ = preprocessing.normalize(np.array(self.weightvec_).reshape(-1, 1))
         np.savetxt('weight.txt', self.weightvec_, delimiter=',')
 
     def reconstruct(self):
-        self.reimg_ = np.zeros_like(self.eigenfaces_[0])
-        for index, item in enumerate(self.weightvec_):
-            self.reimg_ = self.reimg_ + np.multiply(item, np.array(self.eigenfaces_[index]))
-        self.reimg_ = np.transpose(self.reimg_)
+        # self.reimg_ = np.zeros_like(self.eigenfaces_[0])
+        # for index, item in enumerate(self.weightvec_):
+        #     print(item)
+        #     self.reimg_ = self.reimg_ + np.multiply(item, np.array(self.eigenfaces_[index]))
+        self.reimg_ = np.transpose(self.weightvec_) @ self.eigenfaces_
+        # self.reimg_ = np.transpose(self.reimg_)
+        # self.reimg_ = preprocessing.normalize(self.reimg_.reshape(1, -1), norm='l2')
         self.reimg_ = np.reshape(self.reimg_, (self.img_.shape[0], self.img_.shape[1]))
         # print(self.reimg_.shape)
-        io.imshow(self.reimg_, cmap='gray')
-        plt.show()
-        self.reimg_ = self.reimg_ + self.img_aver_
+
+        self.reimg_f = self.reimg_ + self.img_aver_
+        # min_max_scaler = preprocessing.MinMaxScaler(feature_range=(0,256))
+        # self.reimg_f = min_max_scaler.fit_transform(self.reimg_f)
         print(self.img_aver_)
 
-        print(self.reimg_)
-        io.imshow(self.reimg_, cmap='gray')
-        plt.show()
+        
+        # min_max_scaler = preprocessing.MinMaxScaler(feature_range=(0,255))
+        # self.reimg_f = min_max_scaler.fit_transform(self.reimg_f)
+        print(self.reimg_f)
+        np.savetxt('re.txt', self.reimg_f, delimiter=',')
+        show_face(self.img_, self.reimg_, self.reimg_f)
 
     def find_class(self, th1):
         i_min = 0
         dis_min = inf
         for index, face in enumerate(self.face_class_):
             dis = distance.euclidean(self.weightvec_, face)
+            print(dis)
             if  dis < th1 and dis < dis_min:
-                i_min = index
+                print(i_min)
+                i_min = index + 1
                 dis_min = dis
         match = io.imread('TrainSet/subject' + str(i_min).zfill(2) +'.normal')
+        print(i_min)
         io.imshow(match)
         plt.show()
                 
+def show_face(img1, img2, img3):
+    plt.figure()
+    plt.subplot(1,3,1)
+    plt.imshow(img1, cmap='gray')
+    plt.subplot(1,3,2)
+    plt.imshow(img2, cmap='gray')
+    plt.subplot(1,3,3)
+    plt.imshow(img3, cmap='gray')
+    plt.show()
 
 if __name__ == '__main__':
     mypath = 'TrainSet'
@@ -158,13 +206,25 @@ if __name__ == '__main__':
     # f.show_img_average()
     # print(f.data_matrix_)
     eigenvalue, eigenvector = f.method_third()
-    f.find_n_eigenvector(10, eigenvalue, eigenvector)
-    f.calssify(10)
-    f.show_eigenfaces()
-    t = TestImg(f.eigenfaces_, f.img_aver_, 'TestSet/subject09.wink', f.face_class_)
-    t.projection()
-    t.reconstruct()
-    t.find_class(100)
+    f.find_n_eigenvector(100, eigenvalue, eigenvector)
+    f.calssify(100)
+    # f.show_faces_class()
+    # f.show_eigenfaces()
+    # plt.imshow(f.img_aver_)
+    # plt.show()
+    t1 = TestImg(f.eigenfaces_, f.img_aver_, 'TestSet/subject02.glasses', f.face_class_)
+    t1.projection()
+    t1.reconstruct()
+    t2 = TestImg(f.eigenfaces_, f.img_aver_, 'TestSet/subject09.surprised', f.face_class_)
+    t2.projection()
+    t2.reconstruct()
+    t3 = TestImg(f.eigenfaces_, f.img_aver_, 'TestSet/subject15.centerlight', f.face_class_)
+    t3.projection()
+    t3.reconstruct()
+    t1.find_class(10000)
+    t2.find_class(10000)
+    t3.find_class(10000)
+
     # t1 = time.time()
     # v1 = method_one(data_matrix)
     # dt1 = time.time() - t1
