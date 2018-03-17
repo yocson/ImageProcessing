@@ -177,9 +177,10 @@ if __name__ == '__main__':
     f = Train(mypath)
     eigenvalue, eigenvector = f.method_third()
     ei2 = f.method_second()
-    np.savetxt("vec3.txt", preprocessing.normalize(eigenvector, axis=0, norm='l2'), delimiter=',')
+    
     f.find_n_eigenvector(15, eigenvalue, eigenvector)
     f.calssify(15)
+    np.savetxt("vec3.txt", f.eigenfaces_ , delimiter=',')
     # f.show_img_average()
     # t1 = TestImg(f.eigenfaces_, f.img_aver_, 'TestSet2/subject02.glasses', f.face_class_)
     # t1.projection()
