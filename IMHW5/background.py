@@ -72,10 +72,21 @@ def create_codebook(videopath, e1, alpha, beta):
                 
             updated = False
             it.iternext()
-    return code_book
+    return code_book, len(frames)
 
-def compress_codebook(code_book):
-    
+def compress_codebook(code_book, N):
+    it = np.nditer(code_book, flags=['multi_index'])
+    Tm = N / 2
+    while not it.finished:
+        i = it.multi_index[0]
+        j = it.multi_index[1]
+        new_code_words = []
+        for cw in code_book[i, j]:
+            if (cw.aux[3] <= Tm):
+                new_code_words.append(cw)
+        code_book[i, j] = new_code_words
+        it.iternext()
+    return code_book
 
 if __name__ == '__main__':
     print(1)
