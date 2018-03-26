@@ -88,5 +88,29 @@ def compress_codebook(code_book, N):
         it.iternext()
     return code_book
 
+def detect_foreground(image, code_book, e2, alpha, beta):
+    img = io.imread(image)
+    it = np.nditer(img, flags=['multi_index'])
+    BGS = np.zeros_like(img)
+    match = False
+    while not it.finished:
+        i = it.multi_index[0]
+        j = it.multi_index[1]
+    
+        xt = [it[0], it[1], it[2]]
+        I = sqrt(it[0]**2 + it[1]**2 + it[2]**2)
+
+        for cw in code_book[i, j]:
+            if (colordis(xt, cw.vec) < e2 and brightness(I, cw.aux, alpha, beta)):
+                match = True
+                break
+
+        if (match):
+            BGS[i, j] = 0
+        else:
+            BGS[i, j] = 255
+        match = False
+    return BGS
+
 if __name__ == '__main__':
     print(1)
