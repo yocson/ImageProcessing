@@ -112,5 +112,9 @@ def detect_foreground(image, code_book, e2, alpha, beta):
         match = False
     return BGS
 
+def morphological():
+    opening()
+    closing()
+
 if __name__ == '__main__':
     print(1)
