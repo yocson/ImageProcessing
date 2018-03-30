@@ -11,6 +11,7 @@ from scipy.linalg import eigh as largest_eigh
 from scipy.spatial import distance
 from skimage import io
 from sklearn import preprocessing
+from skimage.morphology import square, opening, closing
 
 class Codeword:
     def __init__(self, vec, aux):
@@ -112,9 +113,10 @@ def detect_foreground(image, code_book, e2, alpha, beta):
         match = False
     return BGS
 
-def morphological():
-    opening()
-    closing()
+def morphological(BGS):
+    after_mor = opening(BGS, square(3))
+    after_mor = closing(BGS, square(3))
+    return after_mor
 
 if __name__ == '__main__':
     print(1)
